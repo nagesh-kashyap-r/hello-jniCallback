@@ -17,7 +17,9 @@ package com.example.hellojnicallback;
 
 import androidx.annotation.Keep;
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
@@ -26,22 +28,35 @@ public class MainActivity extends AppCompatActivity {
     int minute = 0;
     int second = 0;
     TextView tickView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         tickView = (TextView) findViewById(R.id.tickView);
+
+        Input input = new Input();
+        input.name = "Hello";
+        Output output = sendAndReceive(input);
+
+        if (output != null) {
+            output.nameCaps = output.nameCaps + "";
+            Log.e("OBJ from JNI", output.nameCaps);
+        } else {
+            Log.e("OBJ from JNI", null);
+        }
     }
+
     @Override
     public void onResume() {
         super.onResume();
         hour = minute = second = 0;
-        ((TextView)findViewById(R.id.hellojniMsg)).setText(stringFromJNI());
+        ((TextView) findViewById(R.id.hellojniMsg)).setText(stringFromJNI());
         startTicks();
     }
 
     @Override
-    public void onPause () {
+    public void onPause() {
         super.onPause();
         StopTicks();
     }
@@ -52,10 +67,10 @@ public class MainActivity extends AppCompatActivity {
     @Keep
     private void updateTimer() {
         ++second;
-        if(second >= 60) {
+        if (second >= 60) {
             ++minute;
             second -= 60;
-            if(minute >= 60) {
+            if (minute >= 60) {
                 ++hour;
                 minute -= 60;
             }
@@ -70,10 +85,16 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
     static {
         System.loadLibrary("hello-jnicallback");
     }
-    public native  String stringFromJNI();
+
+    public native String stringFromJNI();
+
     public native void startTicks();
+
     public native void StopTicks();
+
+    public native Output sendAndReceive(Input input);
 }

@@ -14,16 +14,25 @@
  * limitations under the License.
  *
  */
+#include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <jni.h>
 #include <android/log.h>
 #include <assert.h>
+#include <ctype.h>
+
+void toUpperStr(char *name) {
+    //name = strdup(name); // make a copy of name
+    for (char *p = name; *p; p++) {
+        *p = toupper(*p);
+    }
+}
 
 
 // Android log function wrappers
-static const char* kTAG = "hello-jniCallback";
+static const char *kTAG = "hello-jniCallback";
 #define LOGI(...) \
   ((void)__android_log_print(ANDROID_LOG_INFO, kTAG, __VA_ARGS__))
 #define LOGW(...) \
@@ -33,13 +42,13 @@ static const char* kTAG = "hello-jniCallback";
 
 // processing callback to handler class
 typedef struct tick_context {
-    JavaVM  *javaVM;
-    jclass   jniHelperClz;
-    jobject  jniHelperObj;
-    jclass   mainActivityClz;
-    jobject  mainActivityObj;
-    pthread_mutex_t  lock;
-    int      done;
+    JavaVM *javaVM;
+    jclass jniHelperClz;
+    jobject jniHelperObj;
+    jclass mainActivityClz;
+    jobject mainActivityObj;
+    pthread_mutex_t lock;
+    int done;
 } TickContext;
 TickContext g_ctx;
 
@@ -50,26 +59,25 @@ TickContext g_ctx;
  *   hello-jniCallback/app/src/main/java/com/example/hellojnicallback/MainActivity.java
  */
 JNIEXPORT jstring JNICALL
-Java_com_example_hellojnicallback_MainActivity_stringFromJNI( JNIEnv* env, jobject thiz )
-{
+Java_com_example_hellojnicallback_MainActivity_stringFromJNI(JNIEnv *env, jobject thiz) {
 #if defined(__arm__)
-    #if defined(__ARM_ARCH_7A__)
-    #if defined(__ARM_NEON__)
-      #if defined(__ARM_PCS_VFP)
-        #define ABI "armeabi-v7a/NEON (hard-float)"
-      #else
-        #define ABI "armeabi-v7a/NEON"
-      #endif
-    #else
-      #if defined(__ARM_PCS_VFP)
-        #define ABI "armeabi-v7a (hard-float)"
-      #else
-        #define ABI "armeabi-v7a"
-      #endif
-    #endif
-  #else
-   #define ABI "armeabi"
-  #endif
+#if defined(__ARM_ARCH_7A__)
+#if defined(__ARM_NEON__)
+#if defined(__ARM_PCS_VFP)
+#define ABI "armeabi-v7a/NEON (hard-float)"
+#else
+#define ABI "armeabi-v7a/NEON"
+#endif
+#else
+#if defined(__ARM_PCS_VFP)
+#define ABI "armeabi-v7a (hard-float)"
+#else
+#define ABI "armeabi-v7a"
+#endif
+#endif
+#else
+#define ABI "armeabi"
+#endif
 #elif defined(__i386__)
 #define ABI "x86"
 #elif defined(__x86_64__)
@@ -132,7 +140,7 @@ void queryRuntimeInfo(JNIEnv *env, jobject instance) {
     }
     jlong result = (*env)->CallLongMethod(env, instance, memFunc);
     LOGI("Runtime free memory size: %" PRId64, result);
-    (void)result;  // silence the compiler warning
+    (void) result;  // silence the compiler warning
 }
 
 /*
@@ -146,29 +154,29 @@ void queryRuntimeInfo(JNIEnv *env, jobject instance) {
  *     we rely on system to free all global refs when it goes away;
  *     the pairing function JNI_OnUnload() never gets called at all.
  */
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    JNIEnv* env;
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    JNIEnv *env;
     memset(&g_ctx, 0, sizeof(g_ctx));
 
     g_ctx.javaVM = vm;
-    if ((*vm)->GetEnv(vm, (void**)&env, JNI_VERSION_1_6) != JNI_OK) {
+    if ((*vm)->GetEnv(vm, (void **) &env, JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR; // JNI version not supported.
     }
 
-    jclass  clz = (*env)->FindClass(env,
-                                    "com/example/hellojnicallback/JniHandler");
+    jclass clz = (*env)->FindClass(env,
+                                   "com/example/hellojnicallback/JniHandler");
     g_ctx.jniHelperClz = (*env)->NewGlobalRef(env, clz);
 
-    jmethodID  jniHelperCtor = (*env)->GetMethodID(env, g_ctx.jniHelperClz,
-                                                   "<init>", "()V");
-    jobject    handler = (*env)->NewObject(env, g_ctx.jniHelperClz,
-                                           jniHelperCtor);
+    jmethodID jniHelperCtor = (*env)->GetMethodID(env, g_ctx.jniHelperClz,
+                                                  "<init>", "()V");
+    jobject handler = (*env)->NewObject(env, g_ctx.jniHelperClz,
+                                        jniHelperCtor);
     g_ctx.jniHelperObj = (*env)->NewGlobalRef(env, handler);
     queryRuntimeInfo(env, g_ctx.jniHelperObj);
 
     g_ctx.done = 0;
     g_ctx.mainActivityObj = NULL;
-    return  JNI_VERSION_1_6;
+    return JNI_VERSION_1_6;
 }
 
 /*
@@ -176,8 +184,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
  * JNI allow us to call this function via an instance even it is
  * private function.
  */
-void   sendJavaMsg(JNIEnv *env, jobject instance,
-                   jmethodID func,const char* msg) {
+void sendJavaMsg(JNIEnv *env, jobject instance,
+                 jmethodID func, const char *msg) {
     jstring javaMsg = (*env)->NewStringUTF(env, msg);
     (*env)->CallVoidMethod(env, instance, func, javaMsg);
     (*env)->DeleteLocalRef(env, javaMsg);
@@ -188,11 +196,11 @@ void   sendJavaMsg(JNIEnv *env, jobject instance,
  *     calling back to MainActivity::updateTimer() to display ticks on UI
  *     calling back to JniHelper::updateStatus(String msg) for msg
  */
-void*  UpdateTicks(void* context) {
-    TickContext *pctx = (TickContext*) context;
+void *UpdateTicks(void *context) {
+    TickContext *pctx = (TickContext *) context;
     JavaVM *javaVM = pctx->javaVM;
     JNIEnv *env;
-    jint res = (*javaVM)->GetEnv(javaVM, (void**)&env, JNI_VERSION_1_6);
+    jint res = (*javaVM)->GetEnv(javaVM, (void **) &env, JNI_VERSION_1_6);
     if (res != JNI_OK) {
         res = (*javaVM)->AttachCurrentThread(javaVM, &env, NULL);
         if (JNI_OK != res) {
@@ -213,13 +221,13 @@ void*  UpdateTicks(void* context) {
 
     struct timeval beginTime, curTime, usedTime, leftTime;
     const struct timeval kOneSecond = {
-            (__kernel_time_t)1,
+            (__kernel_time_t) 1,
             (__kernel_suseconds_t) 0
     };
 
     sendJavaMsg(env, pctx->jniHelperObj, statusId,
                 "TickerThread status: start ticking ...");
-    while(1) {
+    while (1) {
         gettimeofday(&beginTime, NULL);
         pthread_mutex_lock(&pctx->lock);
         int done = pctx->done;
@@ -258,8 +266,8 @@ void*  UpdateTicks(void* context) {
  */
 JNIEXPORT void JNICALL
 Java_com_example_hellojnicallback_MainActivity_startTicks(JNIEnv *env, jobject instance) {
-    pthread_t       threadInfo_;
-    pthread_attr_t  threadAttr_;
+    pthread_t threadInfo_;
+    pthread_attr_t threadAttr_;
 
     pthread_attr_init(&threadAttr_);
     pthread_attr_setdetachstate(&threadAttr_, PTHREAD_CREATE_DETACHED);
@@ -270,12 +278,12 @@ Java_com_example_hellojnicallback_MainActivity_startTicks(JNIEnv *env, jobject i
     g_ctx.mainActivityClz = (*env)->NewGlobalRef(env, clz);
     g_ctx.mainActivityObj = (*env)->NewGlobalRef(env, instance);
 
-    int result  = pthread_create( &threadInfo_, &threadAttr_, UpdateTicks, &g_ctx);
+    int result = pthread_create(&threadInfo_, &threadAttr_, UpdateTicks, &g_ctx);
     assert(result == 0);
 
     pthread_attr_destroy(&threadAttr_);
 
-    (void)result;
+    (void) result;
 }
 
 /*
@@ -304,4 +312,46 @@ Java_com_example_hellojnicallback_MainActivity_StopTicks(JNIEnv *env, jobject in
     g_ctx.mainActivityClz = NULL;
 
     pthread_mutex_destroy(&g_ctx.lock);
+}
+
+JNIEXPORT jobject JNICALL
+Java_com_example_hellojnicallback_MainActivity_sendAndReceive(JNIEnv *env, jobject thiz,
+                                                              jobject input) {
+
+    jclass outputClass = (*env)->FindClass(env,
+                                           "com/example/hellojnicallback/Output");
+
+    jmethodID jniHelperCtor = (*env)->GetMethodID(env, outputClass,
+                                                  "<init>", "()V");
+
+    /*if (!jniHelperCtor) {
+        LOGE("Failed to retrieve constructor methodID @ line %d",
+             __LINE__);
+        return NULL;
+    }*/
+
+    jobject handler = (*env)->NewObject(env, outputClass,
+                                        jniHelperCtor);
+
+    jclass clzInput = (*env)->FindClass(env,
+                                        "com/example/hellojnicallback/Input");
+
+    jfieldID fidString = (*env)->GetFieldID(env, clzInput, "name", "Ljava/lang/String;");
+    jobject sVal = (*env)->GetObjectField(env, input, fidString);
+    const char *c_str;
+    c_str = (*env)->GetStringUTFChars(env, sVal, NULL);
+
+    printf("sVal: %s\n", c_str);
+
+    //toUpperStr(c_str);
+
+    jstring output = (*env)->NewStringUTF(env, c_str);
+
+    // after using it, remember to release the memory
+    (*env)->ReleaseStringUTFChars(env, sVal, c_str);
+
+    jfieldID valId = (*env)->GetFieldID(env, outputClass, "nameCaps", "Ljava/lang/String;");
+    (*env) -> SetObjectField(env, handler, valId, output);
+
+    return handler;
 }
